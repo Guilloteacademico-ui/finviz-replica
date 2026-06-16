@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Finviz</title>
+<style>
+:root {
+  --bg:       #0a0a0a;
+  --bg2:      #111111;
+  --bg3:      #1a1a1a;
+  --bg4:      #222222;
+  --border:   #2a2a2a;
+  --text:     #e0e0e0;
+  --muted:    #666;
+  --green:    #30d158;
+  --green2:   #1f7a34;
+  --red:      #ff453a;
+  --red2:     #7f1a1a;
+  --blue:     #64d2ff;
+  --gold:     #ffd60a;
+  --accent:   #32d74b;
+  --safe-top: env(safe-area-inset-top, 54px);
+  --safe-bot: env(safe-area-inset-bottom, 34px);
+  --tab-h:    calc(56px + var(--safe-bot));
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  font-size: 13px;
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+/* ── STATUS BAR SPACER ── */
+.status-bar {
+  height: var(--safe-top);
+  background: var(--bg2);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+/* ── TOP HEADER ── */
+.top-header {
+  background: rgba(17,17,17,0.92);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 0.5px solid var(--border);
+  padding: 8px 16px;
+  position: sticky;
+  top: var(--safe-top);
+  z-index: 99;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.logo {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: 0.5px;
+  font-family: -apple-system, sans-serif;
+}
+.live-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.live-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: pulse 2s infinite;
+}
+.live-dot.paused { background: var(--muted); animation: none; }
+@keyframes pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:.4; transform:scale(.8); }
+}
+.last-update { font-size: 10px; color: var(--muted); }
+
+/* ── TICKER TAPE ── */
+.tape-outer {
+  background: var(--bg2);
+  border-bottom: 0.5px solid var(--border);
+  overflow: hidden;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+.tape-track {
+  display: flex;
+  gap: 28px;
+  padding: 0 16px;
+  animation: scroll-tape 28s linear infinite;
+  white-space: nowrap;
+}
+.tape-outer:hover .tape-track { animation-play-state: paused; }
+@keyframes scroll-tape {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.tape-item { display:flex; gap:6px; align-items:center; }
+.tape-sym  { font-size:11px; font-weight:600; color:#bbb; }
+.tape-val  { font-size:11px; font-weight:700; color:var(--text); }
+.tape-chg  { font-size:10px; font-weight:600; }
+.tape-chg.up { color:var(--green); }
+.tape-chg.dn { color:var(--red); }
+
+/* ── SCROLL CONTAINER ── */
+.scroll-body {
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  height: calc(100dvh - var(--safe-top) - 40px - 32px - var(--tab-h));
+  padding-bottom: 12px;
+}
+
+/* ── SECTION HEADER ── */
+.sec-hdr {
+  padding: 14px 16px 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.sec-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -.2px;
+}
+.sec-link {
+  font-size: 12px;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+/* ── MARKET PILL ROW ── */
+.market-pills {
+  display: flex;
+  gap: 8px;
+  padding: 0 16px 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.market-pills::-webkit-scrollbar { display:none; }
+.mpill {
+  background: var(--bg3);
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  padding: 7px 12px;
+  min-width: 80px;
+  flex-shrink: 0;
+  text-align: center;
+}
+.mpill-sym  { font-size:10px; color:var(--muted); margin-bottom:2px; }
+.mpill-val  { font-size:14px; font-weight:700; }
+.mpill-chg  { font-size:11px; font-weight:600; margin-top:1px; }
+.mpill-chg.up { color:var(--green); }
+.mpill-chg.dn { color:var(--red); }
+
+/* ── HEATMAP ── */
+.heatmap-section { padding: 0 10px 10px; }
+.heatmap-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+.hm-cell {
+  aspect-ratio: 1.1;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform .12s, filter .12s;
+  padding: 2px;
+}
+.hm-cell:active { transform: scale(.94); filter: brightness(1.3); }
+.hm-ticker { font-size: 9px; font-weight: 700; color: rgba(255,255,255,.9); line-height:1; }
+.hm-chg    { font-size: 8px; color: rgba(255,255,255,.7); margin-top:1px; line-height:1; }
+.hm-big .hm-ticker { font-size:11px; }
+.hm-big .hm-chg    { font-size:9px; }
+
+/* Color scale */
+.c-5  { background: #7f1a1a; }
+.c-4  { background: #9e2020; }
+.c-3  { background: #c02828; }
+.c-2  { background: #d84040; }
+.c-1  { background: #a05050; }
+.c0   { background: #252525; }
+.cp1  { background: #1b5c2c; }
+.cp2  { background: #1d7530; }
+.cp3  { background: #219438; }
+.cp4  { background: #25b344; }
+.cp5  { background: #2ed158; }
+
+/* ── SECTORS ── */
+.sector-list { padding: 0 16px; display:flex; flex-direction:column; gap:6px; }
+.sector-row {
+  background: var(--bg3);
+  border-radius: 10px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sector-name { font-size:12px; color:var(--muted); width:110px; flex-shrink:0; }
+.sector-bar-wrap { flex:1; height:5px; background:var(--bg4); border-radius:3px; overflow:hidden; }
+.sector-bar      { height:100%; border-radius:3px; transition:width .6s ease; }
+.sector-val      { font-size:13px; font-weight:700; width:48px; text-align:right; }
+.sector-val.up { color:var(--green); }
+.sector-val.dn { color:var(--red); }
+
+/* ── SIGNALS TABLE ── */
+.signals-list { padding: 0 16px; display:flex; flex-direction:column; gap:0; }
+.sig-row {
+  background: var(--bg3);
+  border-bottom: 0.5px solid var(--border);
+  padding: 9px 12px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.sig-row:first-child { border-radius:10px 10px 0 0; }
+.sig-row:last-child  { border-radius:0 0 10px 10px; border-bottom:none; }
+.sig-ticker { font-size:13px; font-weight:700; color:var(--blue); width:52px; }
+.sig-price  { font-size:12px; color:var(--text); flex:1; }
+.sig-chg    { font-size:13px; font-weight:700; width:58px; text-align:right; }
+.sig-chg.up { color:var(--green); }
+.sig-chg.dn { color:var(--red); }
+.sig-tag {
+  font-size:9px; color:var(--muted);
+  background:var(--bg4); border:0.5px solid var(--border);
+  padding:2px 5px; border-radius:4px; margin-left:6px;
+  white-space:nowrap;
+}
+
+/* ── FUTURES / FOREX CARDS ── */
+.horiz-cards {
+  display:flex; gap:8px;
+  padding:0 16px; overflow-x:auto;
+  scrollbar-width:none;
+}
+.horiz-cards::-webkit-scrollbar { display:none; }
+.hcard {
+  background:var(--bg3);
+  border:0.5px solid var(--border);
+  border-radius:10px;
+  padding:8px 11px;
+  min-width:78px; flex-shrink:0;
+  text-align:center;
+}
+.hcard-name  { font-size:9px; color:var(--muted); margin-bottom:3px; }
+.hcard-price { font-size:13px; font-weight:700; }
+.hcard-chg   { font-size:10px; font-weight:600; margin-top:2px; }
+.hcard-chg.up { color:var(--green); }
+.hcard-chg.dn { color:var(--red); }
+
+/* ── NEWS ── */
+.news-list { padding:0 16px; display:flex; flex-direction:column; gap:0; }
+.news-item {
+  background:var(--bg3);
+  border-bottom:0.5px solid var(--border);
+  padding:9px 12px;
+  display:flex; gap:9px; align-items:flex-start;
+}
+.news-item:first-child { border-radius:10px 10px 0 0; }
+.news-item:last-child  { border-radius:0 0 10px 10px; border-bottom:none; }
+.news-badge {
+  background:#1e3a1e; color:var(--green);
+  font-size:9px; font-weight:700;
+  padding:2px 5px; border-radius:4px;
+  white-space:nowrap; min-width:34px; text-align:center;
+  flex-shrink:0; margin-top:1px;
+}
+.news-body {}
+.news-headline { font-size:12px; line-height:1.35; color:var(--text); }
+.news-meta     { font-size:10px; color:var(--muted); margin-top:3px; }
+
+/* ── CALENDAR ── */
+.cal-list { padding:0 16px; display:flex; flex-direction:column; gap:6px; }
+.cal-day-card {
+  background:var(--bg3);
+  border:0.5px solid var(--border);
+  border-radius:10px;
+  overflow:hidden;
+}
+.cal-day-hdr {
+  background:var(--bg4);
+  padding:5px 12px;
+  font-size:10px; font-weight:700; color:var(--muted);
+  text-transform:uppercase; letter-spacing:.5px;
+}
+.cal-event {
+  padding:6px 12px;
+  font-size:11px; color:var(--text);
+  display:flex; align-items:center; gap:7px;
+  border-top:0.5px solid var(--border);
+}
+.cal-event:first-of-type { border-top:none; }
+.imp-high { color:var(--red); font-size:9px; }
+.imp-med  { color:#ff9f0a; font-size:9px; }
+.imp-low  { color:var(--muted); font-size:9px; }
+
+/* ── STATS ROW ── */
+.stats-row {
+  display:flex; gap:0;
+  padding:0 16px 10px;
+  overflow-x:auto;
+  scrollbar-width:none;
+}
+.stats-row::-webkit-scrollbar { display:none; }
+.stat-pill {
+  background:var(--bg3);
+  border:0.5px solid var(--border);
+  border-radius:10px;
+  padding:7px 11px;
+  margin-right:7px;
+  flex-shrink:0;
+  white-space:nowrap;
+}
+.stat-lbl { font-size:9px; color:var(--muted); margin-bottom:2px; }
+.stat-val { font-size:13px; font-weight:700; }
+.stat-val.up { color:var(--green); }
+.stat-val.dn { color:var(--red); }
+
+/* ── TAB BAR ── */
+.tab-bar {
+  position: fixed;
+  bottom: 0; left:0; right:0;
+  height: var(--tab-h);
+  background: rgba(17,17,17,0.92);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-top: 0.5px solid var(--border);
+  display: flex;
+  z-index: 200;
+  padding-bottom: var(--safe-bot);
+}
+.tab-item {
+  flex:1; display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  gap:3px; cursor:pointer;
+  padding-top:6px;
+  transition: opacity .12s;
+  -webkit-user-select:none; user-select:none;
+}
+.tab-item:active { opacity:.5; transform:scale(.93); }
+.tab-icon {
+  width:26px; height:26px;
+  display:flex; align-items:center; justify-content:center;
+}
+.tab-icon svg {
+  width:24px; height:24px;
+  fill:var(--muted);
+  stroke:var(--muted);
+  transition:fill .15s, stroke .15s;
+  color:var(--muted);
+}
+.tab-label {
+  font-size:10px; font-weight:500;
+  color:var(--muted);
+  font-family:-apple-system,sans-serif;
+  transition:color .15s;
+}
+.tab-item.active .tab-icon svg { fill:var(--accent); stroke:var(--accent); color:var(--accent); }
+.tab-item.active .tab-label    { color:var(--accent); font-weight:600; }
+
+/* ── SECTION DIVIDER ── */
+.section-gap { height: 10px; }
+
+/* ── FLASH ANIMATION for live update ── */
+@keyframes flash-green {
+  0%   { background: rgba(48,209,88,.25); }
+  100% { background: transparent; }
+}
+@keyframes flash-red {
+  0%   { background: rgba(255,69,58,.25); }
+  100% { background: transparent; }
+}
+.flash-up { animation: flash-green .7s ease-out; }
+.flash-dn { animation: flash-red .7s ease-out; }
+
+/* ── REFRESH INDICATOR ── */
+.refresh-bar {
+  height: 2px;
+  background: var(--bg2);
+  overflow:hidden;
+}
+.refresh-progress {
+  height:100%;
+  background: linear-gradient(90deg, var(--accent), transparent);
+  width:0%;
+  transition: width linear;
+}
+</style>
+</head>
+<body>
+
+<div class="status-bar"></div>
+
+<!-- HEADER -->
+<div class="top-header">
+  <div class="logo">FINVIZ</div>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+    <div class="live-badge">
+      <div class="live-dot" id="live-dot"></div>
+      <span id="live-label">LIVE</span>
+    </div>
+    <div class="last-update" id="last-update">–</div>
+  </div>
+</div>
+
+<!-- REFRESH BAR -->
+<div class="refresh-bar"><div class="refresh-progress" id="refresh-bar"></div></div>
+
+<!-- TICKER TAPE -->
+<div class="tape-outer">
+  <div class="tape-track" id="tape-track"></div>
+</div>
+
+<!-- SCROLL BODY -->
+<div class="scroll-body" id="scroll-body">
+
+  <!-- HOME ANCHOR -->
+  <div id="section-home"></div>
+
+  <!-- MARKET PILLS -->
+  <div class="sec-hdr">
+    <span class="sec-title">Markets</span>
+    <a href="#" class="sec-link">All →</a>
+  </div>
+  <div class="market-pills" id="market-pills"></div>
+
+  <!-- STATS -->
+  <div class="stats-row" id="stats-row"></div>
+
+  <!-- MAPS ANCHOR -->
+  <div id="section-maps"></div>
+
+  <!-- HEATMAP -->
+  <div class="sec-hdr">
+    <span class="sec-title">S&amp;P 500 Heat Map</span>
+    <a href="#" class="sec-link">Full →</a>
+  </div>
+  <div class="heatmap-section">
+    <div class="heatmap-grid" id="heatmap-grid"></div>
+  </div>
+
+  <div class="section-gap"></div>
+
+  <!-- SECTORS -->
+  <div class="sec-hdr">
+    <span class="sec-title">Sectors</span>
+    <a href="#" class="sec-link">Groups →</a>
+  </div>
+  <div class="sector-list" id="sector-list"></div>
+
+  <div class="section-gap"></div>
+
+  <!-- SCREENER ANCHOR -->
+  <div id="section-screener"></div>
+
+  <!-- TOP GAINERS -->
+  <div class="sec-hdr">
+    <span class="sec-title">Top Gainers</span>
+    <a href="#" class="sec-link">Screener →</a>
+  </div>
+  <div class="signals-list" id="gainers-list"></div>
+
+  <div class="section-gap"></div>
+
+  <!-- TOP LOSERS -->
+  <div class="sec-hdr">
+    <span class="sec-title">Top Losers</span>
+    <a href="#" class="sec-link">Screener →</a>
+  </div>
+  <div class="signals-list" id="losers-list"></div>
+
+  <div class="section-gap"></div>
+
+  <!-- FUTURES -->
+  <div class="sec-hdr">
+    <span class="sec-title">Futures</span>
+    <a href="#" class="sec-link">All →</a>
+  </div>
+  <div class="horiz-cards" id="futures-cards"></div>
+
+  <div class="section-gap"></div>
+
+  <!-- FOREX / CRYPTO -->
+  <div class="sec-hdr">
+    <span class="sec-title">Forex &amp; Crypto</span>
+    <a href="#" class="sec-link">All →</a>
+  </div>
+  <div class="horiz-cards" id="forex-cards"></div>
+
+  <div class="section-gap"></div>
+
+  <!-- PORTFOLIO ANCHOR -->
+  <div id="section-portfolio"></div>
+
+  <!-- CALENDAR -->
+  <div class="sec-hdr">
+    <span class="sec-title">Economic Calendar</span>
+    <a href="#" class="sec-link">Full →</a>
+  </div>
+  <div class="cal-list" id="cal-list"></div>
+
+  <div class="section-gap"></div>
+
+  <!-- NEWS ANCHOR -->
+  <div id="section-news"></div>
+
+  <!-- NEWS -->
+  <div class="sec-hdr">
+    <span class="sec-title">Latest News</span>
+    <a href="#" class="sec-link">All →</a>
+  </div>
+  <div class="news-list" id="news-list"></div>
+
+  <div style="height:20px"></div>
+</div>
+
+<!-- TAB BAR -->
+<nav class="tab-bar">
+  <!-- Home -->
+  <div class="tab-item active" data-target="section-home">
+    <span class="tab-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H15v-6H9v6H4a1 1 0 01-1-1V9.5z"/>
+      </svg>
+    </span>
+    <span class="tab-label">Inicio</span>
+  </div>
+  <!-- Screener -->
+  <div class="tab-item" data-target="section-screener">
+    <span class="tab-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="11" cy="11" r="7" fill="none" stroke-width="2.2" stroke="currentColor" style="fill:none"/>
+        <line x1="16.5" y1="16.5" x2="21" y2="21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+      </svg>
+    </span>
+    <span class="tab-label">Filtrador</span>
+  </div>
+  <!-- Maps -->
+  <div class="tab-item" data-target="section-maps">
+    <span class="tab-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M9 3L3 6v15l6-3 6 3 6-3V3l-6 3-6-3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        <line x1="9" y1="3" x2="9" y2="18" stroke="currentColor" stroke-width="2"/>
+        <line x1="15" y1="6" x2="15" y2="21" stroke="currentColor" stroke-width="2"/>
+      </svg>
+    </span>
+    <span class="tab-label">Mapas</span>
+  </div>
+  <!-- News -->
+  <div class="tab-item" data-target="section-news">
+    <span class="tab-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+        <line x1="7" y1="9" x2="17" y2="9" stroke="currentColor" stroke-width="1.8"/>
+        <line x1="7" y1="13" x2="17" y2="13" stroke="currentColor" stroke-width="1.8"/>
+        <line x1="7" y1="17" x2="13" y2="17" stroke="currentColor" stroke-width="1.8"/>
+      </svg>
+    </span>
+    <span class="tab-label">Noticias</span>
+  </div>
+  <!-- Portfolio -->
+  <div class="tab-item" data-target="section-portfolio">
+    <span class="tab-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      </svg>
+    </span>
+    <span class="tab-label">Cartera</span>
+  </div>
+</nav>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// BASE DATA
+// ═══════════════════════════════════════════════════════════
+
+const basePills = [
+  { sym:'SPY',  val:591.42, chg:+1.23 },
+  { sym:'QQQ',  val:519.87, chg:+1.58 },
+  { sym:'DIA',  val:443.10, chg:+0.67 },
+  { sym:'IWM',  val:217.34, chg:-0.22 },
+  { sym:'VIX',  val:14.21,  chg:-5.10 },
+  { sym:'GLD',  val:239.45, chg:+0.38 },
+  { sym:'USO',  val:72.10,  chg:-1.44 },
+  { sym:'TLT',  val:92.34,  chg:-0.55 },
+];
+
+const tapeSyms = [...basePills,
+  { sym:'BTC',  val:105240, chg:+2.14 },
+  { sym:'ETH',  val:3842,   chg:+1.78 },
+  { sym:'XAU',  val:2344,   chg:+0.37 },
+  { sym:'DXY',  val:104.22, chg:+0.11 },
+];
+
+const baseHeatmap = [
+  {t:'NVDA',c:3.8},{t:'AAPL',c:-0.4},{t:'MSFT',c:1.2},{t:'AMZN',c:2.1},{t:'GOOGL',c:0.8},{t:'META',c:1.7},{t:'TSLA',c:-2.3},
+  {t:'BRK.B',c:0.3},{t:'UNH',c:-1.8},{t:'JNJ',c:-0.6},{t:'V',c:0.9},{t:'JPM',c:1.4},{t:'XOM',c:-1.2},{t:'LLY',c:4.2},
+  {t:'AVGO',c:2.8},{t:'MA',c:0.7},{t:'HD',c:-0.9},{t:'CVX',c:-2.1},{t:'MRK',c:-0.5},{t:'ABBV',c:1.1},{t:'COST',c:0.6},
+  {t:'PEP',c:-0.3},{t:'KO',c:-0.1},{t:'ADBE',c:-6.8},{t:'CRM',c:1.5},{t:'AMD',c:4.7},{t:'NFLX',c:2.2},{t:'ACN',c:0.4},
+  {t:'MCD',c:-0.7},{t:'TXN',c:1.8},{t:'LIN',c:0.2},{t:'ORCL',c:3.1},{t:'HON',c:-0.8},{t:'IBM',c:1.0},{t:'QCOM',c:2.3},
+  {t:'UPS',c:-1.5},{t:'BA',c:-0.3},{t:'CAT',c:0.5},{t:'DE',c:-1.1},{t:'GE',c:0.9},{t:'MMM',c:-2.4},{t:'MRNA',c:5.1},
+  {t:'SBUX',c:-1.6},{t:'INTC',c:-3.2},{t:'PYPL',c:1.4},{t:'PFE',c:-0.5},{t:'ISRG',c:2.6},{t:'AXP',c:1.3},{t:'NKE',c:-0.9},
+];
+
+const baseSectors = [
+  {n:'Technology',    c:2.1},  {n:'Comm. Services',c:1.7},
+  {n:'Financials',    c:1.3},  {n:'Consumer Disc.', c:0.8},
+  {n:'Industrials',   c:0.5},  {n:'Healthcare',     c:-0.4},
+  {n:'Consumer Stap.',c:-0.2}, {n:'Utilities',      c:-0.3},
+  {n:'Materials',     c:-0.7}, {n:'Real Estate',    c:-1.1},
+  {n:'Energy',        c:-1.8},
+];
+
+const baseGainers = [
+  {t:'CAST',p:1.55,  c:+140.68,v:'206M', sig:'Top Gainers'},
+  {t:'CUPR',p:3.97,  c:+64.73, v:'83M',  sig:'Top Gainers'},
+  {t:'UBXG',p:7.87,  c:+64.30, v:'35M',  sig:'Top Gainers'},
+  {t:'VSME',p:1.69,  c:+52.25, v:'80M',  sig:'Top Gainers'},
+  {t:'EDHL',p:8.64,  c:+44.48, v:'11M',  sig:'Top Gainers'},
+  {t:'FRD', p:34.72, c:+31.61, v:'325K', sig:'New High'},
+  {t:'ROKU',p:143.66,c:+20.08, v:'14M',  sig:'New High'},
+  {t:'AMD', p:511.57,c:+4.73,  v:'31M',  sig:'Upgrades'},
+];
+
+const baseLosers = [
+  {t:'CPOP',p:0.19,  c:-81.43,v:'86M',  sig:'Top Losers'},
+  {t:'HSPT',p:5.80,  c:-47.37,v:'769K', sig:'Top Losers'},
+  {t:'SMSI',p:2.88,  c:-36.81,v:'1.4M', sig:'Top Losers'},
+  {t:'GELS',p:0.99,  c:-35.29,v:'6M',   sig:'Top Losers'},
+  {t:'SDOT',p:16.21, c:-34.05,v:'267K', sig:'Top Losers'},
+  {t:'ADBE',p:204.02,c:-6.76, v:'25M',  sig:'Downgrades'},
+  {t:'INTC',p:21.34, c:-3.20, v:'80M',  sig:'Oversold'},
+  {t:'TSLA',p:248.70,c:-2.30, v:'121M', sig:'Oversold'},
+];
+
+const baseFutures = [
+  {n:'ES', p:5912.5, c:+0.82,up:true },
+  {n:'NQ', p:21348,  c:+1.12,up:true },
+  {n:'YM', p:43180,  c:+0.55,up:true },
+  {n:'RTY',p:2168.2, c:-0.18,up:false},
+  {n:'CL', p:71.24,  c:-1.10,up:false},
+  {n:'GC', p:2342.4, c:+0.28,up:true },
+  {n:'SI', p:29.14,  c:-0.42,up:false},
+  {n:'ZB', p:117.22, c:-0.44,up:false},
+];
+
+const baseForex = [
+  {n:'EUR/USD',p:1.0847,  c:+0.14,up:true },
+  {n:'GBP/USD',p:1.2763,  c:+0.22,up:true },
+  {n:'USD/JPY',p:157.42,  c:+0.31,up:true },
+  {n:'BTC',    p:105240,  c:+2.14,up:true },
+  {n:'ETH',    p:3842,    c:+1.78,up:true },
+  {n:'ARS/USD',p:1125,    c:-0.08,up:false},
+  {n:'DXY',    p:104.22,  c:+0.11,up:true },
+];
+
+const stats = [
+  {lbl:'Advancing',val:'55.0%',up:true},
+  {lbl:'Declining', val:'40.6%',up:false},
+  {lbl:'New Highs', val:'349',  up:true},
+  {lbl:'New Lows',  val:'134',  up:false},
+  {lbl:'Above 50MA',val:'52.5%',up:true},
+  {lbl:'Above 200MA',val:'49.5%',up:true},
+];
+
+const news = [
+  {time:'16:42',ticker:'AMD', headline:'AMD surges after analyst upgrades PT to $600 on AI acceleration',src:'Reuters'},
+  {time:'16:35',ticker:'ADBE',headline:'Adobe drops 7% as cloud growth misses Q2 expectations',src:'Bloomberg'},
+  {time:'16:28',ticker:'NVDA',headline:'Nvidia confirms $600B Saudi Arabia AI infrastructure deal',src:'WSJ'},
+  {time:'16:15',ticker:'TSLA',headline:'Tesla Cybertruck recall: faulty accelerator, NHTSA confirms',src:'CNBC'},
+  {time:'15:58',ticker:'ROKU',headline:'Roku hits 52-wk high, ad revenue beats by 12%, streams +23% YoY',src:"Barron's"},
+  {time:'15:43',ticker:'JPM', headline:'JPMorgan raises S&P year-end target to 6,500',src:'FT'},
+  {time:'15:08',ticker:'BTC', headline:'Bitcoin breaks $105K on $3.2B weekly institutional inflows',src:'CoinDesk'},
+  {time:'14:55',ticker:'MRNA',headline:'Moderna mRNA cancer vaccine: 78% efficacy in Phase III trial',src:'Nature'},
+];
+
+const calEvents = [
+  {day:'MON Jun 9',  events:[{imp:'med',txt:'JOLTS Job Openings 10:00'},{imp:'low',txt:'IBD/TIPP Optimism 10:00'}]},
+  {day:'TUE Jun 10', events:[{imp:'high',txt:'CPI YoY 08:30'},{imp:'med',txt:'Core CPI 08:30'}]},
+  {day:'WED Jun 11', events:[{imp:'med',txt:'PPI Final Demand 08:30'},{imp:'high',txt:'FOMC Minutes 14:00'}]},
+  {day:'THU Jun 12', events:[{imp:'high',txt:'Initial Jobless Claims 08:30'},{imp:'med',txt:'Import Prices 08:30'}]},
+  {day:'FRI Jun 13', events:[{imp:'high',txt:'UMich Consumer Sentiment 10:00'},{imp:'med',txt:'Fed Speakers 14:00'}]},
+];
+
+// ═══════════════════════════════════════════════════════════
+// LIVE DATA STATE (mutated every tick)
+// ═══════════════════════════════════════════════════════════
+
+let liveHeatmap  = baseHeatmap.map(s=>({...s}));
+let liveSectors  = baseSectors.map(s=>({...s}));
+let livePills    = basePills.map(s=>({...s}));
+let liveFutures  = baseFutures.map(s=>({...s}));
+let liveForex    = baseForex.map(s=>({...s}));
+let liveGainers  = baseGainers.map(s=>({...s}));
+let liveLosers   = baseLosers.map(s=>({...s}));
+
+function jitter(val, maxPct=0.05) {
+  return val * (1 + (Math.random() - 0.5) * maxPct);
+}
+function jitterChg(chg, maxDelta=0.08) {
+  return +(chg + (Math.random() - 0.5) * maxDelta).toFixed(2);
+}
+
+function tickData() {
+  liveHeatmap = liveHeatmap.map(s => ({ t:s.t, c: jitterChg(s.c, 0.12) }));
+  liveSectors = liveSectors.map(s => ({ n:s.n, c: jitterChg(s.c, 0.06) }));
+  livePills   = livePills.map(s => ({
+    sym:s.sym,
+    val: +jitter(s.val, 0.004).toFixed(2),
+    chg: jitterChg(s.chg, 0.04),
+  }));
+  liveFutures = liveFutures.map(s => ({
+    n:s.n, up: s.c >= 0,
+    p: +jitter(s.p, 0.003).toFixed(2),
+    c: jitterChg(s.c, 0.04),
+  }));
+  liveForex = liveForex.map(s => ({
+    n:s.n, up: s.c >= 0,
+    p: +jitter(s.p, 0.002).toFixed(4),
+    c: jitterChg(s.c, 0.03),
+  }));
+}
+
+// ═══════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════
+
+function fmt(n) {
+  if (Math.abs(n) >= 1000) return n.toLocaleString('en-US',{maximumFractionDigits:0});
+  if (Math.abs(n) < 10)    return n.toFixed(4);
+  return n.toFixed(2);
+}
+function pct(c) { return (c>=0?'+':'')+c.toFixed(2)+'%'; }
+function colorClass(c) {
+  if (c<=-4) return 'c-5'; if (c<=-3) return 'c-4'; if (c<=-2) return 'c-3';
+  if (c<=-1) return 'c-2'; if (c<0)   return 'c-1'; if (c===0) return 'c0';
+  if (c<1)   return 'cp1'; if (c<2)   return 'cp2'; if (c<3)   return 'cp3';
+  if (c<4)   return 'cp4'; return 'cp5';
+}
+function now() {
+  return new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+// ═══════════════════════════════════════════════════════════
+// INITIAL RENDER (once)
+// ═══════════════════════════════════════════════════════════
+
+// Ticker tape (doubled for infinite scroll)
+function buildTape() {
+  const t = document.getElementById('tape-track');
+  const items = [...tapeSyms, ...tapeSyms]; // double for loop
+  t.innerHTML = items.map(s=>`
+    <div class="tape-item">
+      <span class="tape-sym">${s.sym}</span>
+      <span class="tape-val">${fmt(s.val)}</span>
+      <span class="tape-chg ${s.chg>=0?'up':'dn'}">${pct(s.chg)}</span>
+    </div>`).join('');
+}
+buildTape();
+
+// Stats row
+document.getElementById('stats-row').innerHTML = stats.map(s=>`
+  <div class="stat-pill">
+    <div class="stat-lbl">${s.lbl}</div>
+    <div class="stat-val ${s.up?'up':'dn'}">${s.val}</div>
+  </div>`).join('');
+
+// Market pills
+function buildPills() {
+  document.getElementById('market-pills').innerHTML = livePills.map(s=>`
+    <div class="mpill">
+      <div class="mpill-sym">${s.sym}</div>
+      <div class="mpill-val">${fmt(s.val)}</div>
+      <div class="mpill-chg ${s.chg>=0?'up':'dn'}">${pct(s.chg)}</div>
+    </div>`).join('');
+}
+buildPills();
+
+// Heatmap
+function buildHeatmap() {
+  document.getElementById('heatmap-grid').innerHTML = liveHeatmap.map(s=>`
+    <div class="hm-cell ${colorClass(s.c)}" id="hm-${s.t}">
+      <span class="hm-ticker">${s.t}</span>
+      <span class="hm-chg">${pct(s.c)}</span>
+    </div>`).join('');
+}
+buildHeatmap();
+
+// Sectors
+function buildSectors() {
+  document.getElementById('sector-list').innerHTML = liveSectors.map(s=>`
+    <div class="sector-row">
+      <span class="sector-name">${s.n}</span>
+      <div class="sector-bar-wrap">
+        <div class="sector-bar" style="width:${Math.min(Math.abs(s.c)/5*100,100)}%;background:${s.c>=0?'#30d158':'#ff453a'}"></div>
+      </div>
+      <span class="sector-val ${s.c>=0?'up':'dn'}">${pct(s.c)}</span>
+    </div>`).join('');
+}
+buildSectors();
+
+// Signal tables
+function buildSignals(data, id) {
+  document.getElementById(id).innerHTML = data.map(d=>`
+    <div class="sig-row">
+      <span class="sig-ticker">${d.t}</span>
+      <span class="sig-price">${fmt(d.p)}</span>
+      <span class="sig-chg ${d.c>=0?'up':'dn'}">${pct(d.c)}</span>
+      <span class="sig-tag">${d.sig}</span>
+    </div>`).join('');
+}
+buildSignals(liveGainers, 'gainers-list');
+buildSignals(liveLosers,  'losers-list');
+
+// Futures/Forex cards
+function buildCards(data, id) {
+  document.getElementById(id).innerHTML = data.map(d=>`
+    <div class="hcard">
+      <div class="hcard-name">${d.n}</div>
+      <div class="hcard-price">${fmt(d.p)}</div>
+      <div class="hcard-chg ${d.c>=0?'up':'dn'}">${pct(d.c)}</div>
+    </div>`).join('');
+}
+buildCards(liveFutures, 'futures-cards');
+buildCards(liveForex,   'forex-cards');
+
+// Calendar
+document.getElementById('cal-list').innerHTML = calEvents.map(day=>`
+  <div class="cal-day-card">
+    <div class="cal-day-hdr">${day.day}</div>
+    ${day.events.map(e=>`
+      <div class="cal-event">
+        <span class="${e.imp==='high'?'imp-high':e.imp==='med'?'imp-med':'imp-low'}">
+          ${e.imp==='high'?'●●':'●'}
+        </span>
+        ${e.txt}
+      </div>`).join('')}
+  </div>`).join('');
+
+// News
+document.getElementById('news-list').innerHTML = news.map(n=>`
+  <div class="news-item">
+    <span class="news-badge">${n.ticker}</span>
+    <div class="news-body">
+      <div class="news-headline">${n.headline}</div>
+      <div class="news-meta">${n.time} · ${n.src}</div>
+    </div>
+  </div>`).join('');
+
+// ═══════════════════════════════════════════════════════════
+// LIVE UPDATE ENGINE
+// ═══════════════════════════════════════════════════════════
+
+const UPDATE_INTERVAL = 4000; // ms between updates
+let updateTimer = null;
+let progressTimer = null;
+let isActive = true;
+
+function updatePills() {
+  const pills = document.querySelectorAll('.mpill');
+  livePills.forEach((s, i) => {
+    if (!pills[i]) return;
+    const valEl = pills[i].querySelector('.mpill-val');
+    const chgEl = pills[i].querySelector('.mpill-chg');
+    const oldChg = parseFloat(chgEl.textContent);
+    valEl.textContent = fmt(s.val);
+    chgEl.textContent = pct(s.chg);
+    chgEl.className = `mpill-chg ${s.chg>=0?'up':'dn'}`;
+    // Flash
+    pills[i].style.animation = 'none';
+    pills[i].offsetHeight; // reflow
+    pills[i].style.animation = s.chg > oldChg ? 'flash-green .7s ease-out' : 'flash-red .7s ease-out';
+  });
+}
+
+function updateHeatmap() {
+  liveHeatmap.forEach(s => {
+    const cell = document.getElementById(`hm-${s.t}`);
+    if (!cell) return;
+    const oldClass = cell.className.split(' ').find(c=>c.startsWith('c'));
+    const newClass = colorClass(s.c);
+    if (oldClass !== newClass) {
+      cell.classList.remove(oldClass);
+      cell.classList.add(newClass);
+    }
+    cell.querySelector('.hm-chg').textContent = pct(s.c);
+  });
+}
+
+function updateSectors() {
+  const rows = document.querySelectorAll('.sector-row');
+  liveSectors.forEach((s, i) => {
+    if (!rows[i]) return;
+    const bar = rows[i].querySelector('.sector-bar');
+    const val = rows[i].querySelector('.sector-val');
+    bar.style.width = Math.min(Math.abs(s.c)/5*100,100)+'%';
+    bar.style.background = s.c>=0 ? '#30d158' : '#ff453a';
+    val.textContent = pct(s.c);
+    val.className = `sector-val ${s.c>=0?'up':'dn'}`;
+  });
+}
+
+function updateCards(data, id) {
+  const cards = document.getElementById(id).querySelectorAll('.hcard');
+  data.forEach((d, i) => {
+    if (!cards[i]) return;
+    cards[i].querySelector('.hcard-price').textContent = fmt(d.p);
+    const chgEl = cards[i].querySelector('.hcard-chg');
+    chgEl.textContent = pct(d.c);
+    chgEl.className = `hcard-chg ${d.c>=0?'up':'dn'}`;
+  });
+}
+
+function runUpdate() {
+  if (!isActive) return;
+  tickData();
+  updatePills();
+  updateHeatmap();
+  updateSectors();
+  updateCards(liveFutures, 'futures-cards');
+  updateCards(liveForex,   'forex-cards');
+  document.getElementById('last-update').textContent = 'Updated ' + now();
+}
+
+// Progress bar animation
+function animateProgress() {
+  const bar = document.getElementById('refresh-bar');
+  bar.style.transition = 'none';
+  bar.style.width = '0%';
+  bar.offsetHeight;
+  bar.style.transition = `width ${UPDATE_INTERVAL}ms linear`;
+  bar.style.width = '100%';
+}
+
+function startUpdates() {
+  if (updateTimer) return;
+  isActive = true;
+  document.getElementById('live-dot').classList.remove('paused');
+  document.getElementById('live-label').textContent = 'LIVE';
+  runUpdate();
+  animateProgress();
+  updateTimer = setInterval(() => {
+    runUpdate();
+    animateProgress();
+  }, UPDATE_INTERVAL);
+}
+
+function stopUpdates() {
+  isActive = false;
+  clearInterval(updateTimer);
+  updateTimer = null;
+  document.getElementById('live-dot').classList.add('paused');
+  document.getElementById('live-label').textContent = 'PAUSED';
+  const bar = document.getElementById('refresh-bar');
+  bar.style.transition = 'none';
+  bar.style.width = '0%';
+}
+
+// ── Page Visibility API ──────────────────────────────────
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    startUpdates();
+  } else {
+    stopUpdates();
+  }
+});
+
+// ── iOS app state (focus/blur) ───────────────────────────
+window.addEventListener('focus', startUpdates);
+window.addEventListener('blur',  stopUpdates);
+window.addEventListener('pageshow', startUpdates);
+window.addEventListener('pagehide', stopUpdates);
+
+// ── Tab bar interaction ──────────────────────────────────
+document.querySelectorAll('.tab-item').forEach(tab => {
+  tab.addEventListener('click', () => {
+    // 1. Marca activo
+    document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+
+    // 2. Scroll a la sección correspondiente
+    const targetId = tab.dataset.target;
+    const scrollEl = document.getElementById('scroll-body');
+    const anchor   = document.getElementById(targetId);
+
+    if (!anchor || !scrollEl) return;
+
+    // offsetTop relativo al scroll-body
+    const anchorTop = anchor.getBoundingClientRect().top
+                    - scrollEl.getBoundingClientRect().top
+                    + scrollEl.scrollTop
+                    - 8; // pequeño margen visual
+
+    scrollEl.scrollTo({ top: Math.max(0, anchorTop), behavior: 'smooth' });
+  });
+});
+
+// ── Start ────────────────────────────────────────────────
+startUpdates();
+</script>
+</body>
+</html>
